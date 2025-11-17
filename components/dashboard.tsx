@@ -32,7 +32,7 @@ function getCarbonLevel(carbon: number): { label: string; color: string; bgColor
 }
 
 export function Dashboard() {
-  const { isOnline, currentSpectrum, currentCarbon, logs, isConnected, authError, clearAuthError } = useMqtt()
+  const { isOnline, currentSpectrum, currentCarbon, logs, isConnected, authError, clearAuthError, connectionState, lastConnectedTime } = useMqtt()
   const logsEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -108,6 +108,23 @@ export function Dashboard() {
 
   const carbonInfo = currentCarbon !== null ? getCarbonLevel(currentCarbon) : null
 
+  const getConnectionStateLabel = () => {
+    switch (connectionState) {
+      case 'connected':
+        return { text: 'Conectado', color: 'bg-success text-success-foreground' }
+      case 'connecting':
+        return { text: 'Conectando...', color: 'bg-yellow-500 text-yellow-50' }
+      case 'reconnecting':
+        return { text: 'Reconectando...', color: 'bg-yellow-500 text-yellow-50' }
+      case 'error':
+        return { text: 'Erro', color: 'bg-destructive text-destructive-foreground' }
+      default:
+        return { text: 'Desconectado', color: 'bg-destructive text-destructive-foreground' }
+    }
+  }
+
+  const connectionLabel = getConnectionStateLabel()
+
   return (
     <div className="space-y-4">
       {authError && (
@@ -155,6 +172,44 @@ export function Dashboard() {
         </Card>
       )}
 
+      <Card className="p-6">
+        <h3 className="mb-4 text-sm font-semibold text-foreground">Conexão MQTT</h3>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <div className="rounded-lg border border-border bg-muted/30 p-4">
+            <div className="mb-2 text-xs font-medium text-muted-foreground">Estado Atual</div>
+            <div className="flex items-center gap-2">
+              <div
+                className={`h-3 w-3 rounded-full ${
+                  isConnected ? 'bg-success animate-pulse-slow' : 'bg-destructive'
+                }`}
+              />
+              <span className={`text-sm font-semibold px-2 py-1 rounded ${connectionLabel.color}`}>
+                {connectionLabel.text}
+              </span>
+            </div>
+          </div>
+          <div className="rounded-lg border border-border bg-muted/30 p-4">
+            <div className="mb-2 text-xs font-medium text-muted-foreground">Última Conexão</div>
+            <div className="text-sm font-semibold text-foreground">
+              {lastConnectedTime ? new Date(lastConnectedTime).toLocaleTimeString() : 'Nunca'}
+            </div>
+          </div>
+          <div className="rounded-lg border border-border bg-muted/30 p-4">
+            <div className="mb-2 text-xs font-medium text-muted-foreground">Status do Dispositivo</div>
+            <div className="flex items-center gap-2">
+              <div
+                className={`h-3 w-3 rounded-full ${
+                  isOnline ? 'bg-success animate-pulse-slow' : 'bg-gray-400'
+                }`}
+              />
+              <span className="text-sm font-semibold text-foreground">
+                {isOnline ? 'Online' : 'Offline'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </Card>
+
       {/* Status Bar */}
       <Card className="p-4">
         <div className="flex items-center justify-between">
@@ -178,7 +233,7 @@ export function Dashboard() {
               <div className="flex items-center gap-2">
                 <div
                   className={`h-2.5 w-2.5 rounded-full ${
-                    isOnline ? 'bg-success animate-pulse-slow' : 'bg-destructive'
+                    isOnline ? 'bg-success animate-pulse-slow' : 'bg-gray-400'
                   }`}
                 />
                 <span className="text-sm font-medium text-foreground">

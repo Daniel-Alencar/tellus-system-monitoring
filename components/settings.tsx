@@ -74,22 +74,22 @@ export function Settings() {
 
   const handleReset = () => {
     const defaultConfig = {
-      host: 'broker.emqx.io',
-      port: 8084,
+      host: '2bb84e902cad479a8833af2a53a36fc9.s1.eu.hivemq.cloud',
+      port: 8884,
       topic_online: 'pico/online',
       topic_spectrum: 'pico/c12880/exp',
       topic_log: 'pico/log',
       topic_carbon: 'pico/carbon',
-      username: '',
-      password: '',
+      username: 'Saturno',
+      password: 'Deusehfiel25',
     }
     setFormData(defaultConfig)
     updateConfig(defaultConfig)
-    setRememberCredentials(false)
+    setRememberCredentials(true)
     if (typeof window !== 'undefined') {
-      localStorage.setItem('remember_credentials', 'false')
+      localStorage.setItem('remember_credentials', 'true')
     }
-    setTestResult({ success: true, message: 'Configurações restauradas para o padrão!' })
+    setTestResult({ success: true, message: 'Configurações restauradas para o padrão HiveMQ Cloud!' })
     setTimeout(() => setTestResult(null), 3000)
   }
 
@@ -106,32 +106,34 @@ export function Settings() {
         <div className="space-y-4">
           {/* Broker Settings */}
           <div className="space-y-4 rounded-lg border border-border p-4">
-            <h3 className="text-sm font-semibold text-foreground">Configurações do Broker</h3>
+            <h3 className="text-sm font-semibold text-foreground">Configurações do Broker WebSocket (WSS)</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="host">Host</Label>
+                <Label htmlFor="host">Host WebSocket (TLS)</Label>
                 <Input
                   id="host"
                   value={formData.host}
                   onChange={(e) => setFormData({ ...formData, host: e.target.value })}
-                  placeholder="broker.emqx.io"
+                  placeholder="2bb84e902cad479a8833af2a53a36fc9.s1.eu.hivemq.cloud"
                 />
+                <p className="text-xs text-muted-foreground">Apenas endereço do host (sem wss:// ou caminho)</p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="port">Porta</Label>
+                <Label htmlFor="port">Porta WebSocket Segura</Label>
                 <Input
                   id="port"
                   type="number"
                   value={formData.port}
-                  onChange={(e) => setFormData({ ...formData, port: parseInt(e.target.value) || 8084 })}
-                  placeholder="8084"
+                  onChange={(e) => setFormData({ ...formData, port: parseInt(e.target.value) || 8884 })}
+                  placeholder="8884"
                 />
+                <p className="text-xs text-muted-foreground">Porta WSS padrão: 8884</p>
               </div>
             </div>
             
             {/* Authentication Fields */}
             <div className="mt-4 space-y-4 rounded-lg border border-accent/30 bg-accent/5 p-4">
-              <h4 className="text-sm font-semibold text-foreground">Autenticação (Opcional)</h4>
+              <h4 className="text-sm font-semibold text-foreground">Autenticação (Obrigatória para HiveMQ Cloud)</h4>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="username">Usuário MQTT</Label>
@@ -139,7 +141,7 @@ export function Settings() {
                     id="username"
                     value={formData.username}
                     onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                    placeholder="Deixe em branco se não houver autenticação"
+                    placeholder="Saturno"
                   />
                 </div>
                 <div className="space-y-2">
@@ -149,7 +151,7 @@ export function Settings() {
                     type="password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    placeholder="Deixe em branco se não houver autenticação"
+                    placeholder="••••••••••"
                   />
                 </div>
               </div>
@@ -270,7 +272,7 @@ export function Settings() {
               Reconectar
             </Button>
             <Button onClick={handleReset} variant="outline">
-              Restaurar Padrão
+              Restaurar Padrão HiveMQ
             </Button>
           </div>
 
@@ -335,7 +337,7 @@ export function Settings() {
           </div>
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
             <span className="text-sm text-muted-foreground">Protocolo WebSocket</span>
-            <span className="text-sm font-medium text-foreground">WSS</span>
+            <span className="text-sm font-medium text-foreground">WSS (TLS)</span>
           </div>
         </div>
       </Card>
@@ -359,11 +361,12 @@ export function Settings() {
           <div className="space-y-1">
             <h4 className="text-sm font-semibold text-foreground">Dicas de Configuração</h4>
             <ul className="space-y-1 text-sm text-muted-foreground">
-              <li>• A aplicação usa WebSocket Secure (WSS) para conexões MQTT</li>
-              <li>• O broker padrão é público e não requer autenticação</li>
+              <li>• A aplicação usa WebSocket Secure (wss://) na porta 8884 com caminho /mqtt</li>
+              <li>• O broker padrão é HiveMQ Cloud com autenticação obrigatória</li>
               <li>• Todas as configurações são salvas localmente no seu navegador</li>
               <li>• Clique em "Reconectar" após alterar as configurações para aplicar as mudanças</li>
-              <li>• Use autenticação apenas se o seu broker MQTT exigir credenciais</li>
+              <li>• Browsers não suportam MQTT TCP (porta 1883) - apenas WebSockets (8884)</li>
+              <li>• Logs detalhados aparecem no console do navegador (F12)</li>
             </ul>
           </div>
         </div>
