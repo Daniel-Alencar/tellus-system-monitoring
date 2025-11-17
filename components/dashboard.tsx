@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react'
 import { useMqtt } from './mqtt-provider'
 import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -31,7 +32,7 @@ function getCarbonLevel(carbon: number): { label: string; color: string; bgColor
 }
 
 export function Dashboard() {
-  const { isOnline, currentSpectrum, currentCarbon, logs, isConnected } = useMqtt()
+  const { isOnline, currentSpectrum, currentCarbon, logs, isConnected, authError, clearAuthError } = useMqtt()
   const logsEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -109,6 +110,51 @@ export function Dashboard() {
 
   return (
     <div className="space-y-4">
+      {authError && (
+        <Card className="border-2 border-destructive/50 bg-destructive/10 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex gap-3">
+              <svg
+                className="mt-0.5 h-6 w-6 flex-shrink-0 text-destructive"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <div>
+                <h3 className="font-semibold text-destructive-foreground">Erro de Autenticação MQTT</h3>
+                <p className="mt-1 text-sm text-destructive-foreground/90">{authError}</p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Por favor, verifique suas credenciais na aba <strong>Configurações</strong> e reconecte.
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearAuthError}
+              className="flex-shrink-0 text-destructive-foreground hover:bg-destructive/20"
+            >
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                viewBox="0 0 24 24"
+              >
+                <path d="M6 18L18 6M6 6l12 12" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {/* Status Bar */}
       <Card className="p-4">
         <div className="flex items-center justify-between">

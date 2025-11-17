@@ -10,6 +10,8 @@ interface MqttConfig {
   topic_spectrum: string
   topic_log: string
   topic_carbon: string
+  username: string
+  password: string
 }
 
 interface SpectrumData {
@@ -29,6 +31,8 @@ interface MqttContextType {
   isConnected: boolean
   saveSpectrum: (spectrum: SpectrumData) => void
   savedSpectrums: SpectrumData[]
+  authError: string | null
+  clearAuthError: () => void
 }
 
 const MqttContext = createContext<MqttContextType | undefined>(undefined)
@@ -40,6 +44,8 @@ const DEFAULT_CONFIG: MqttConfig = {
   topic_spectrum: 'pico/c12880/exp',
   topic_log: 'pico/log',
   topic_carbon: 'pico/carbon',
+  username: '',
+  password: '',
 }
 
 export function MqttProvider({ children }: { children: React.ReactNode }) {
@@ -56,6 +62,8 @@ export function MqttProvider({ children }: { children: React.ReactNode }) {
     return DEFAULT_CONFIG
   })
   const [isConnected, setIsConnected] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
+  const [shouldAutoReconnect, setShouldAutoReconnect] = useState(true)
   const [savedSpectrums, setSavedSpectrums] = useState<SpectrumData[]>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('saved_spectrums')
@@ -79,26 +87,46 @@ export function MqttProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== 'undefined') {
       localStorage.setItem('mqtt_config', JSON.stringify(newConfig))
     }
+    setAuthError(null)
+    setShouldAutoReconnect(true)
+  }, [])
+
+  const clearAuthError = useCallback(() => {
+    setAuthError(null)
   }, [])
 
   const reconnect = useCallback(() => {
     if (client) {
       client.end(true)
     }
+    setAuthError(null)
+    setShouldAutoReconnect(true)
     connectMqtt()
   }, [client, config])
 
   const connectMqtt = useCallback(() => {
     try {
       const url = `wss://${config.host}:${config.port}/mqtt`
-      const mqttClient = mqtt.connect(url, {
+      
+      const connectOptions: any = {
         clientId: `tellus_monitor_${Math.random().toString(16).substr(2, 8)}`,
         clean: true,
-        reconnectPeriod: 5000,
-      })
+        reconnectPeriod: shouldAutoReconnect ? 5000 : 0,
+      }
+      
+      if (config.username) {
+        connectOptions.username = config.username
+      }
+      if (config.password) {
+        connectOptions.password = config.password
+      }
+
+      const mqttClient = mqtt.connect(url, connectOptions)
 
       mqttClient.on('connect', () => {
         setIsConnected(true)
+        setAuthError(null)
+        setShouldAutoReconnect(true)
         mqttClient.subscribe(
           [config.topic_online, config.topic_spectrum, config.topic_log, config.topic_carbon],
           (err) => {
@@ -150,6 +178,18 @@ export function MqttProvider({ children }: { children: React.ReactNode }) {
       mqttClient.on('error', (error) => {
         console.error('MQTT error:', error)
         setIsConnected(false)
+        
+        const errorMessage = error.message || error.toString()
+        if (
+          errorMessage.includes('Not authorized') ||
+          errorMessage.includes('authentication') ||
+          errorMessage.includes('Connection refused') ||
+          errorMessage.includes('Bad username or password')
+        ) {
+          setAuthError('Falha na autenticação. Verifique suas credenciais.')
+          setShouldAutoReconnect(false)
+          mqttClient.end(true)
+        }
       })
 
       mqttClient.on('close', () => {
@@ -161,7 +201,7 @@ export function MqttProvider({ children }: { children: React.ReactNode }) {
       console.error('Failed to connect:', error)
       setIsConnected(false)
     }
-  }, [config, currentCarbon])
+  }, [config, currentCarbon, shouldAutoReconnect])
 
   useEffect(() => {
     connectMqtt()
@@ -185,6 +225,8 @@ export function MqttProvider({ children }: { children: React.ReactNode }) {
         isConnected,
         saveSpectrum,
         savedSpectrums,
+        authError,
+        clearAuthError,
       }}
     >
       {children}

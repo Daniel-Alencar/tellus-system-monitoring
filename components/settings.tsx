@@ -6,20 +6,48 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 
 export function Settings() {
   const { config, updateConfig, reconnect, isConnected } = useMqtt()
   const [formData, setFormData] = useState(config)
   const [isTesting, setIsTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [rememberCredentials, setRememberCredentials] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('remember_credentials') === 'true'
+    }
+    return false
+  })
 
   const handleSave = () => {
-    updateConfig(formData)
-    setTestResult({ success: true, message: 'Configuration saved successfully!' })
+    const configToSave = { ...formData }
+    
+    if (typeof window !== 'undefined') {
+      if (rememberCredentials) {
+        localStorage.setItem('mqtt_config', JSON.stringify(configToSave))
+        localStorage.setItem('remember_credentials', 'true')
+      } else {
+        const configWithoutPassword = { ...configToSave, password: '' }
+        localStorage.setItem('mqtt_config', JSON.stringify(configWithoutPassword))
+        localStorage.setItem('remember_credentials', 'false')
+      }
+    }
+    
+    updateConfig(configToSave)
+    setTestResult({ success: true, message: 'Configuração salva com sucesso!' })
     setTimeout(() => setTestResult(null), 3000)
   }
 
   const handleTest = async () => {
+    if (formData.username && !formData.password) {
+      setTestResult({ 
+        success: false, 
+        message: 'Por favor, forneça a senha para autenticação.' 
+      })
+      return
+    }
+
     setIsTesting(true)
     setTestResult(null)
 
@@ -27,12 +55,12 @@ export function Settings() {
       await new Promise((resolve) => setTimeout(resolve, 1500))
       
       if (isConnected) {
-        setTestResult({ success: true, message: 'Connection test successful!' })
+        setTestResult({ success: true, message: 'Conectado com sucesso!' })
       } else {
-        setTestResult({ success: false, message: 'Connection failed. Please check your settings.' })
+        setTestResult({ success: false, message: 'Falha na conexão. Verifique suas configurações.' })
       }
     } catch (error) {
-      setTestResult({ success: false, message: 'Connection test failed.' })
+      setTestResult({ success: false, message: 'Falha no teste de conexão.' })
     } finally {
       setIsTesting(false)
     }
@@ -40,7 +68,7 @@ export function Settings() {
 
   const handleReconnect = () => {
     reconnect()
-    setTestResult({ success: true, message: 'Reconnecting...' })
+    setTestResult({ success: true, message: 'Reconectando...' })
     setTimeout(() => setTestResult(null), 3000)
   }
 
@@ -52,10 +80,16 @@ export function Settings() {
       topic_spectrum: 'pico/c12880/exp',
       topic_log: 'pico/log',
       topic_carbon: 'pico/carbon',
+      username: '',
+      password: '',
     }
     setFormData(defaultConfig)
     updateConfig(defaultConfig)
-    setTestResult({ success: true, message: 'Reset to default settings!' })
+    setRememberCredentials(false)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('remember_credentials', 'false')
+    }
+    setTestResult({ success: true, message: 'Configurações restauradas para o padrão!' })
     setTimeout(() => setTestResult(null), 3000)
   }
 
@@ -63,16 +97,16 @@ export function Settings() {
     <div className="mx-auto max-w-3xl space-y-4">
       <Card className="p-6">
         <div className="mb-6">
-          <h2 className="text-lg font-semibold text-foreground">MQTT Configuration</h2>
+          <h2 className="text-lg font-semibold text-foreground">Configuração MQTT</h2>
           <p className="text-sm text-muted-foreground">
-            Configure your MQTT broker connection and topic subscriptions
+            Configure a conexão com o broker MQTT e as inscrições de tópicos
           </p>
         </div>
 
         <div className="space-y-4">
           {/* Broker Settings */}
           <div className="space-y-4 rounded-lg border border-border p-4">
-            <h3 className="text-sm font-semibold text-foreground">Broker Settings</h3>
+            <h3 className="text-sm font-semibold text-foreground">Configurações do Broker</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="host">Host</Label>
@@ -84,7 +118,7 @@ export function Settings() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="port">Port</Label>
+                <Label htmlFor="port">Porta</Label>
                 <Input
                   id="port"
                   type="number"
@@ -94,51 +128,93 @@ export function Settings() {
                 />
               </div>
             </div>
+            
+            {/* Authentication Fields */}
+            <div className="mt-4 space-y-4 rounded-lg border border-accent/30 bg-accent/5 p-4">
+              <h4 className="text-sm font-semibold text-foreground">Autenticação (Opcional)</h4>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="username">Usuário MQTT</Label>
+                  <Input
+                    id="username"
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    placeholder="Deixe em branco se não houver autenticação"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Senha MQTT</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    placeholder="Deixe em branco se não houver autenticação"
+                  />
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="remember"
+                  checked={rememberCredentials}
+                  onCheckedChange={(checked) => setRememberCredentials(checked as boolean)}
+                />
+                <label
+                  htmlFor="remember"
+                  className="text-sm text-muted-foreground cursor-pointer"
+                >
+                  Lembrar credenciais (salva a senha no navegador)
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Se desmarcado, a senha será mantida apenas na memória durante esta sessão.
+              </p>
+            </div>
           </div>
 
           {/* Topic Settings */}
           <div className="space-y-4 rounded-lg border border-border p-4">
-            <h3 className="text-sm font-semibold text-foreground">MQTT Topics</h3>
+            <h3 className="text-sm font-semibold text-foreground">Tópicos MQTT</h3>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="topic_online">Device Status Topic</Label>
+                <Label htmlFor="topic_online">Tópico de Status do Dispositivo</Label>
                 <Input
                   id="topic_online"
                   value={formData.topic_online}
                   onChange={(e) => setFormData({ ...formData, topic_online: e.target.value })}
                   placeholder="pico/online"
                 />
-                <p className="text-xs text-muted-foreground">Publishes 1 (online) or 0 (offline)</p>
+                <p className="text-xs text-muted-foreground">Publica 1 (online) ou 0 (offline)</p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="topic_spectrum">Spectrum Data Topic</Label>
+                <Label htmlFor="topic_spectrum">Tópico de Dados do Espectro</Label>
                 <Input
                   id="topic_spectrum"
                   value={formData.topic_spectrum}
                   onChange={(e) => setFormData({ ...formData, topic_spectrum: e.target.value })}
                   placeholder="pico/c12880/exp"
                 />
-                <p className="text-xs text-muted-foreground">Publishes array of 288 intensity values</p>
+                <p className="text-xs text-muted-foreground">Publica array de 288 valores de intensidade</p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="topic_carbon">Carbon Estimation Topic</Label>
+                <Label htmlFor="topic_carbon">Tópico de Estimativa de Carbono</Label>
                 <Input
                   id="topic_carbon"
                   value={formData.topic_carbon}
                   onChange={(e) => setFormData({ ...formData, topic_carbon: e.target.value })}
                   placeholder="pico/carbon"
                 />
-                <p className="text-xs text-muted-foreground">Publishes carbon value as float (percentage or g/kg)</p>
+                <p className="text-xs text-muted-foreground">Publica valor de carbono como float (percentual ou g/kg)</p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="topic_log">System Log Topic</Label>
+                <Label htmlFor="topic_log">Tópico de Log do Sistema</Label>
                 <Input
                   id="topic_log"
                   value={formData.topic_log}
                   onChange={(e) => setFormData({ ...formData, topic_log: e.target.value })}
                   placeholder="pico/log"
                 />
-                <p className="text-xs text-muted-foreground">Publishes text messages</p>
+                <p className="text-xs text-muted-foreground">Publica mensagens de texto</p>
               </div>
             </div>
           </div>
@@ -159,7 +235,7 @@ export function Settings() {
                   strokeLinejoin="round"
                 />
               </svg>
-              Save Configuration
+              Salvar Configuração
             </Button>
             <Button onClick={handleTest} disabled={isTesting} variant="outline">
               <svg
@@ -175,7 +251,7 @@ export function Settings() {
                   strokeLinejoin="round"
                 />
               </svg>
-              {isTesting ? 'Testing...' : 'Test Connection'}
+              {isTesting ? 'Testando...' : 'Testar Conexão'}
             </Button>
             <Button onClick={handleReconnect} variant="outline">
               <svg
@@ -191,10 +267,10 @@ export function Settings() {
                   strokeLinejoin="round"
                 />
               </svg>
-              Reconnect
+              Reconectar
             </Button>
             <Button onClick={handleReset} variant="outline">
-              Reset to Default
+              Restaurar Padrão
             </Button>
           </div>
 
@@ -242,10 +318,10 @@ export function Settings() {
 
       {/* Connection Status */}
       <Card className="p-6">
-        <h3 className="mb-4 text-sm font-semibold text-foreground">Current Connection Status</h3>
+        <h3 className="mb-4 text-sm font-semibold text-foreground">Status da Conexão Atual</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
-            <span className="text-sm text-muted-foreground">MQTT Broker</span>
+            <span className="text-sm text-muted-foreground">Broker MQTT</span>
             <div className="flex items-center gap-2">
               <div
                 className={`h-2 w-2 rounded-full ${
@@ -253,12 +329,12 @@ export function Settings() {
                 }`}
               />
               <span className="text-sm font-medium text-foreground">
-                {isConnected ? 'Connected' : 'Disconnected'}
+                {isConnected ? 'Conectado' : 'Desconectado'}
               </span>
             </div>
           </div>
           <div className="flex items-center justify-between rounded-lg border border-border p-3">
-            <span className="text-sm text-muted-foreground">WebSocket Protocol</span>
+            <span className="text-sm text-muted-foreground">Protocolo WebSocket</span>
             <span className="text-sm font-medium text-foreground">WSS</span>
           </div>
         </div>
@@ -281,12 +357,13 @@ export function Settings() {
             />
           </svg>
           <div className="space-y-1">
-            <h4 className="text-sm font-semibold text-foreground">Configuration Tips</h4>
+            <h4 className="text-sm font-semibold text-foreground">Dicas de Configuração</h4>
             <ul className="space-y-1 text-sm text-muted-foreground">
-              <li>• The application uses WebSocket Secure (WSS) for MQTT connections</li>
-              <li>• Default broker is public and requires no authentication</li>
-              <li>• All settings are saved locally in your browser</li>
-              <li>• Click "Reconnect" after changing settings to apply changes</li>
+              <li>• A aplicação usa WebSocket Secure (WSS) para conexões MQTT</li>
+              <li>• O broker padrão é público e não requer autenticação</li>
+              <li>• Todas as configurações são salvas localmente no seu navegador</li>
+              <li>• Clique em "Reconectar" após alterar as configurações para aplicar as mudanças</li>
+              <li>• Use autenticação apenas se o seu broker MQTT exigir credenciais</li>
             </ul>
           </div>
         </div>
