@@ -18,8 +18,20 @@ import { Line } from 'react-chartjs-2'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler)
 
+function getCarbonLevel(carbon: number): { label: string; color: string; bgColor: string } {
+  if (carbon < 1.0) {
+    return { label: 'Amostra pobre em carbono', color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-500/10 border-red-500/30' }
+  } else if (carbon < 2.0) {
+    return { label: 'Regular', color: 'text-yellow-600 dark:text-yellow-400', bgColor: 'bg-yellow-500/10 border-yellow-500/30' }
+  } else if (carbon < 3.5) {
+    return { label: 'Alta', color: 'text-green-600 dark:text-green-400', bgColor: 'bg-green-500/10 border-green-500/30' }
+  } else {
+    return { label: 'Muito Alta', color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-500/10 border-emerald-500/30' }
+  }
+}
+
 export function Dashboard() {
-  const { isOnline, currentSpectrum, logs, isConnected } = useMqtt()
+  const { isOnline, currentSpectrum, currentCarbon, logs, isConnected } = useMqtt()
   const logsEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -93,6 +105,8 @@ export function Dashboard() {
     },
   }
 
+  const carbonInfo = currentCarbon !== null ? getCarbonLevel(currentCarbon) : null
+
   return (
     <div className="space-y-4">
       {/* Status Bar */}
@@ -134,6 +148,50 @@ export function Dashboard() {
           )}
         </div>
       </Card>
+
+      {currentCarbon !== null && carbonInfo && (
+        <Card className={`border-2 p-6 ${carbonInfo.bgColor}`}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-background/50">
+                <svg
+                  className={`h-8 w-8 ${carbonInfo.color}`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Carbono Estimado</p>
+                <div className="flex items-baseline gap-2">
+                  <span className={`text-4xl font-bold ${carbonInfo.color}`}>
+                    {currentCarbon.toFixed(2)}
+                  </span>
+                  <span className="text-lg font-medium text-muted-foreground">%</span>
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 ${carbonInfo.bgColor} border`}>
+                <div className={`h-2 w-2 rounded-full ${carbonInfo.color.replace('text-', 'bg-')}`} />
+                <span className={`text-sm font-semibold ${carbonInfo.color}`}>
+                  {carbonInfo.label}
+                </span>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Atualizado em tempo real
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Main Content Grid */}
       <div className="grid gap-4 lg:grid-cols-3">

@@ -9,17 +9,20 @@ interface MqttConfig {
   topic_online: string
   topic_spectrum: string
   topic_log: string
+  topic_carbon: string
 }
 
 interface SpectrumData {
   timestamp: string
   values: number[]
+  carbon?: number
 }
 
 interface MqttContextType {
   isOnline: boolean
   currentSpectrum: SpectrumData | null
   logs: Array<{ timestamp: string; message: string }>
+  currentCarbon: number | null
   config: MqttConfig
   updateConfig: (newConfig: MqttConfig) => void
   reconnect: () => void
@@ -36,12 +39,14 @@ const DEFAULT_CONFIG: MqttConfig = {
   topic_online: 'pico/online',
   topic_spectrum: 'pico/c12880/exp',
   topic_log: 'pico/log',
+  topic_carbon: 'pico/carbon',
 }
 
 export function MqttProvider({ children }: { children: React.ReactNode }) {
   const [client, setClient] = useState<MqttClient | null>(null)
   const [isOnline, setIsOnline] = useState(false)
   const [currentSpectrum, setCurrentSpectrum] = useState<SpectrumData | null>(null)
+  const [currentCarbon, setCurrentCarbon] = useState<number | null>(null)
   const [logs, setLogs] = useState<Array<{ timestamp: string; message: string }>>([])
   const [config, setConfig] = useState<MqttConfig>(() => {
     if (typeof window !== 'undefined') {
@@ -93,15 +98,15 @@ export function MqttProvider({ children }: { children: React.ReactNode }) {
       })
 
       mqttClient.on('connect', () => {
-        console.log('[v0] MQTT connected')
         setIsConnected(true)
-        mqttClient.subscribe([config.topic_online, config.topic_spectrum, config.topic_log], (err) => {
-          if (err) {
-            console.error('[v0] Subscribe error:', err)
-          } else {
-            console.log('[v0] Subscribed to topics')
+        mqttClient.subscribe(
+          [config.topic_online, config.topic_spectrum, config.topic_log, config.topic_carbon],
+          (err) => {
+            if (err) {
+              console.error('Subscribe error:', err)
+            }
           }
-        })
+        )
       })
 
       mqttClient.on('message', (topic, payload) => {
@@ -116,11 +121,12 @@ export function MqttProvider({ children }: { children: React.ReactNode }) {
               const spectrum: SpectrumData = {
                 timestamp: new Date().toISOString(),
                 values,
+                carbon: currentCarbon ?? undefined,
               }
               setCurrentSpectrum(spectrum)
             }
           } catch (error) {
-            console.error('[v0] Error parsing spectrum:', error)
+            console.error('Error parsing spectrum:', error)
           }
         } else if (topic === config.topic_log) {
           const logEntry = {
@@ -128,25 +134,34 @@ export function MqttProvider({ children }: { children: React.ReactNode }) {
             message,
           }
           setLogs((prev) => [...prev.slice(-199), logEntry])
+        } 
+        else if (topic === config.topic_carbon) {
+          try {
+            const carbonValue = parseFloat(message)
+            if (!isNaN(carbonValue)) {
+              setCurrentCarbon(carbonValue)
+            }
+          } catch (error) {
+            console.error('Error parsing carbon value:', error)
+          }
         }
       })
 
       mqttClient.on('error', (error) => {
-        console.error('[v0] MQTT error:', error)
+        console.error('MQTT error:', error)
         setIsConnected(false)
       })
 
       mqttClient.on('close', () => {
-        console.log('[v0] MQTT connection closed')
         setIsConnected(false)
       })
 
       setClient(mqttClient)
     } catch (error) {
-      console.error('[v0] Failed to connect:', error)
+      console.error('Failed to connect:', error)
       setIsConnected(false)
     }
-  }, [config])
+  }, [config, currentCarbon])
 
   useEffect(() => {
     connectMqtt()
@@ -162,6 +177,7 @@ export function MqttProvider({ children }: { children: React.ReactNode }) {
       value={{
         isOnline,
         currentSpectrum,
+        currentCarbon,
         logs,
         config,
         updateConfig,

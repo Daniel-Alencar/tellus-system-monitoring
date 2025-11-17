@@ -34,10 +34,11 @@ export function History() {
       return
     }
 
-    let csv = 'Timestamp,' + Array.from({ length: 288 }, (_, i) => `Pixel_${i}`).join(',') + '\n'
+    let csv = 'Timestamp,Carbon,' + Array.from({ length: 288 }, (_, i) => `Pixel_${i}`).join(',') + '\n'
     
     savedSpectrums.forEach((spectrum) => {
-      csv += `${spectrum.timestamp},${spectrum.values.join(',')}\n`
+      const carbonValue = spectrum.carbon !== undefined ? spectrum.carbon.toFixed(2) : ''
+      csv += `${spectrum.timestamp},${carbonValue},${spectrum.values.join(',')}\n`
     })
 
     const blob = new Blob([csv], { type: 'text/csv' })
@@ -209,6 +210,11 @@ export function History() {
                       <p className="text-xs text-muted-foreground">
                         {new Date(spectrum.timestamp).toLocaleString()}
                       </p>
+                      {spectrum.carbon !== undefined && (
+                        <p className="mt-1 text-xs font-medium text-primary">
+                          Carbon: {spectrum.carbon.toFixed(2)}%
+                        </p>
+                      )}
                     </div>
                     <div className="text-xs text-muted-foreground">288 px</div>
                   </div>
@@ -223,9 +229,31 @@ export function History() {
           <div className="mb-4">
             <h3 className="text-lg font-semibold text-foreground">Selected Spectrum</h3>
             {selectedSpectrum && (
-              <p className="text-sm text-muted-foreground">
-                {new Date(selectedSpectrum.timestamp).toLocaleString()}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {new Date(selectedSpectrum.timestamp).toLocaleString()}
+                </p>
+                {selectedSpectrum.carbon !== undefined && (
+                  <div className="flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1">
+                    <svg
+                      className="h-4 w-4 text-primary"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                    <span className="text-sm font-semibold text-primary">
+                      Carbon: {selectedSpectrum.carbon.toFixed(2)}%
+                    </span>
+                  </div>
+                )}
+              </div>
             )}
           </div>
           <div className="h-[500px]">

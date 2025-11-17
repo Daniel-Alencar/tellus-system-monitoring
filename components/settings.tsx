@@ -24,7 +24,6 @@ export function Settings() {
     setTestResult(null)
 
     try {
-      // Simulate connection test
       await new Promise((resolve) => setTimeout(resolve, 1500))
       
       if (isConnected) {
@@ -52,6 +51,7 @@ export function Settings() {
       topic_online: 'pico/online',
       topic_spectrum: 'pico/c12880/exp',
       topic_log: 'pico/log',
+      topic_carbon: 'pico/carbon',
     }
     setFormData(defaultConfig)
     updateConfig(defaultConfig)
@@ -119,6 +119,16 @@ export function Settings() {
                   placeholder="pico/c12880/exp"
                 />
                 <p className="text-xs text-muted-foreground">Publishes array of 288 intensity values</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="topic_carbon">Carbon Estimation Topic</Label>
+                <Input
+                  id="topic_carbon"
+                  value={formData.topic_carbon}
+                  onChange={(e) => setFormData({ ...formData, topic_carbon: e.target.value })}
+                  placeholder="pico/carbon"
+                />
+                <p className="text-xs text-muted-foreground">Publishes carbon value as float (percentage or g/kg)</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="topic_log">System Log Topic</Label>
