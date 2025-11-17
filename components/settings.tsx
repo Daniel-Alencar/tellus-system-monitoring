@@ -309,7 +309,7 @@ export function Settings() {
                     />
                   </svg>
                 )}
-                <span className="text-sm font-medium">{testResult.message}</span>
+                <span className="text-black-500 text-sm font-medium">{testResult.message}</span>
               </div>
             </div>
           )}
